@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<meta charset="UTF-8">
   <head>
     <title>LetMeHelp!</title>
     <meta name="viewport" content="initial-scale=1.0">
@@ -53,17 +54,16 @@
           <div class="legend"></div>
        </div>
       <div class="leftPanel" style="float: left;height:100%;width: 20%;box-shadow:  0 10px 10px 10px black;z-index: 2;position:relative">
-        hello
       </div>
     </div>
     <div id="footer" style="height:20%;background-color: #443F99 ;box-shadow:  0 10px 10px 10px black;z-index: 2;position:relative">
-      hello
+      <button type="button" onClick="disableFloodLayer()">Desactivar zonas inundables</button>
     </div>
     <div id="color-definitions" style="display: none;">#67001f,#a11228,#c53f3d,#df755d,#f5a987,#fcd3bc,#f9ece5,#e8f0f4,#c7e0ed,#97c7df,#5ba2cb,#337eb8,#1b5a9b,#053061</div>
     <div id="labels" style="display: none;">-10000,-8000,-6000,-4000,-2000,0,2000,4000,6000,8000,10000,12000,14000,16000</div>
     <div id="color-definitions-alternate" style="display: none;">#fff5f0,#ffebe2,#fee1d4,#fdd1be,#fcbfa7,#fcad90,#fc997a,#fc8666,#fb7353,#f85f43,#f34935,#e93529,#d82422,#c7171c,#b51318,#a10e15,#840711,#67000d</div>
     <div id="labels-alternate" style="display: none;">0,1,2,4,6,8,10,50,100,200,500,1000,1500,2000,2500,5000,10000,> 10000</div>
-    <script src="map.js"></script>
+    <script src="map.js" charset="UTF-8"></script>
     <script async defer
     src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDxydKN7Yt54JNmVw9opg9EcibCghjetgw&callback=initMap">
     </script>

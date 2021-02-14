@@ -1,4 +1,6 @@
 var map;
+var regionsList=[];
+
 // Hacky. Get legend color definitions and labels from HTML,
 // which are defined with a python script
 var tmp = document.getElementById("color-definitions").innerHTML;
@@ -9,6 +11,10 @@ var tmp = document.getElementById("color-definitions-alternate").innerHTML;
 var bcolors = tmp.split(',');
 var tmp = document.getElementById("labels-alternate").innerHTML;
 var blabels = tmp.split(',');
+
+var regions;
+var floodZones;
+var floodZonesVisible=true;
 
 // Primary map styling created with Google Maps
 // Styling Wizard at https://mapstyle.withgoogle.com/
@@ -364,7 +370,7 @@ var altStyle = [
 ];
 
 // Create button for switching between visualizations
-function switchVisualization(switchControlDiv, data_layer){
+function switchVisualization(switchControlDiv, regions){
 
   // Set CSS for the control border.
   var controlUI = document.createElement('div');
@@ -393,8 +399,8 @@ function switchVisualization(switchControlDiv, data_layer){
   // different demographic data
   google.maps.event.addDomListener(controlUI, 'click', function() {
     // Trigger events that update Polygon colors and legend
-    google.maps.event.trigger(data_layer, 'setcolor');
-    google.maps.event.trigger(data_layer, 'updatelegend');
+    google.maps.event.trigger(regions, 'setcolor');
+    google.maps.event.trigger(regions, 'updatelegend');
   });
 }
 
@@ -408,6 +414,7 @@ function initMap() {
     styles: style
   });
 
+  new google.maps.event.addListenerOnce(map, 'tilesloaded', checkZoneVisible);
 
   // Center map on Helsinki using geocoding
   var geocoder = new google.maps.Geocoder();
@@ -424,14 +431,14 @@ function initMap() {
     });
   }
 
-  var data_layer = new google.maps.Data({map: map});
-  var data_layer_2 = new google.maps.Data({map: map});
+  regions = new google.maps.Data({map: map});
+  floodZones = new google.maps.Data({map: map});
 
   // Load GeoJSON that contains zip code boundaries and geographic information
   // NOTE: This uses cross-domain XHR, and may not work on older browsers.
-  data_layer.loadGeoJson("https://raw.githubusercontent.com/dbenitez83/LetMeHelp/main/map_data_ES_filtered_reduced.json")
-  data_layer_2.loadGeoJson("https://raw.githubusercontent.com/dbenitez83/LetMeHelp/main/myfile.geojson")
-  data_layer_2.setStyle({
+  regions.loadGeoJson("https://raw.githubusercontent.com/dbenitez83/LetMeHelp/main/map_data_ES_filtered_reduced.json");
+  floodZones.loadGeoJson("https://raw.githubusercontent.com/dbenitez83/LetMeHelp/main/myfile.geojson");
+  floodZones.setStyle({
     strokeColor: 'blue',
     strokeOpacity: 0.2,
     strokeWeight: 1,
@@ -441,7 +448,9 @@ function initMap() {
 
   // Colorize zip code areas based on relative median danger
   // or population density (changeable via dedicated button)
-  data_layer.setStyle(function(feature) {
+  regions.setStyle(function(feature) {
+   // console.log(feature.getProperty('name'), 'is' ,feature.getProperty('color'));
+
     if (!feature.getProperty('useDensity')) {
       var color = feature.getProperty('fill');
       var opacity = 0.7;
@@ -462,23 +471,23 @@ function initMap() {
   // When the user hovers, tempt them to click by outlining zip code area.
   // Call revertStyle() to remove all overrides. This will use the style rules
   // defined in the function passed to setStyle()
-  data_layer.addListener('mouseover', function(event) {
-    data_layer.revertStyle();
-    data_layer.overrideStyle(event.feature, {strokeWeight: 4, strokeColor: 'gray'});
+  regions.addListener('mouseover', function(event) {
+    regions.revertStyle();
+    regions.overrideStyle(event.feature, {strokeWeight: 4, strokeColor: 'gray'});
   });
 
-  data_layer.addListener('mouseout', function(event) {
-    data_layer.revertStyle();
+  regions.addListener('mouseout', function(event) {
+    regions.revertStyle();
   });
 
   // When the user selects a zip code area,
   // display info window with more detailed information
   var infowindow = new google.maps.InfoWindow();
-  data_layer.addListener('click', function(event) {
+  regions.addListener('click', function(event) {
       createInfoWindow(map, event, infowindow);
   });
 
-  data_layer_2.addListener('click', function(event) {
+  floodZones.addListener('click', function(event) {
     createInfoWindowInundacion(map, event, infowindow);
   });
 
@@ -566,7 +575,7 @@ function initMap() {
   // Create DIV for the button that switches between the two
   // data sets used to colorize the zip code areas.
   var switchControlDiv = document.createElement('div');
-  var switchControl = new switchVisualization(switchControlDiv, data_layer);
+  var switchControl = new switchVisualization(switchControlDiv, regions);
 
   switchControlDiv.index = 1;
   map.controls[google.maps.ControlPosition.RIGHT_TOP].push(switchControlDiv);
@@ -608,19 +617,19 @@ function initMap() {
 
   // Add listener that detects when button is clicked
   // triggering a recoloring of the Polygons objects
-  data_layer.addListener('setcolor', function(event) {
-    data_layer.forEach(function(feature) {
+  regions.addListener('setcolor', function(event) {
+    regions.forEach(function(feature) {
       feature.setProperty('useDensity', !feature.getProperty('useDensity'));
     });
   })
 
   // Add listener that detects when button is clicked
   // triggering a redraw of the map legend
-  data_layer.addListener('updatelegend', function(event) {
+  regions.addListener('updatelegend', function(event) {
     var useDensity;
     var accessed = false;
     // Determine which color scheme to use
-    data_layer.forEach(function(feature) {
+    regions.forEach(function(feature) {
       if (!accessed) {
         useDensity = !feature.getProperty('useDensity');
         accessed = true;
@@ -634,3 +643,53 @@ function initMap() {
     createLegend(legend, useDensity);
   });
 };
+
+function disableFloodLayer(){
+  floodZonesVisible=!floodZonesVisible;
+  floodZones.setStyle(function() {
+    return{
+      strokeColor: 'blue',
+      strokeOpacity: 0.2,
+      strokeWeight: 1,
+      fillColor: 'blue',
+      fillOpacity: 0.35,
+      visible: floodZonesVisible
+    };
+  });
+}
+
+function makeList() {
+  // Establish the array which acts as a data source for the list
+      numberOfListItems = regionsList.length;
+      // Make a container element for the list
+      listContainer = document.createElement('div'),
+      // Make the list
+      listElement = document.createElement('select'),
+      // Set up a loop that goes through the items in listItems one at a time
+
+
+  // Add it to the page
+  document.getElementById('horizontal').querySelectorAll('.leftPanel')[0].appendChild(listContainer);
+  listContainer.appendChild(listElement);
+
+  for (i = 0; i < numberOfListItems; ++i) {
+    // create an item for each one
+    listItem = document.createElement('option');
+
+    // Add the item text
+    listItem.innerHTML = regionsList[i];
+
+    // Add listItem to the listElement
+    listElement.appendChild(listItem);
+  }
+}
+
+function checkZoneVisible(){
+  regions.forEach(function (feature) {
+    //console.log(feature);
+    //console.log(feature.getProperty('name'));
+    regionsList.push(feature.getProperty('name'));
+  });
+  makeList();
+}
+
